@@ -4,25 +4,49 @@ const asyncHandler = require("express-async-handler");
 const User = require("../model/User");
 
 const userCtrl = {
-  
-  //! Login
+  //!Register
+  register: asyncHandler(async (req, res) => {
+    const { PhoneNumber, password } = req.body;
+    console.log({ PhoneNumber, password });
+    //!Validations
+    if (!PhoneNumber || !password) {
+      throw new Error("Please all fields are required");
+    }
+    //! check if user already exists
+    const userExits = await User.findOne({ PhoneNumber });
+    // console.log("userExits", userExits);
+    if (userExits) {
+      throw new Error("User already exists");
+    }
+    //! Hash the user password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    //!Create the user
+    const userCreated = await User.create({
+      password: hashedPassword,
+      PhoneNumber,
+    });
+    //!Send the response
+    console.log("userCreated", userCreated);
+    res.json({
+      username: userCreated.username,
+      PhoneNumber: userCreated.PhoneNumber,
+      id: userCreated.id,
+    });
+  }),
+  //!Login
   login: asyncHandler(async (req, res) => {
     const { PhoneNumber, password } = req.body;
-    //!Check if user email exists
+    //!Check if user PhoneNumber exists
     const user = await User.findOne({ PhoneNumber });
     console.log("user backend", user);
     if (!user) {
       throw new Error("Invalid credentials");
     }
     //!Check if user password is valid
-    try {
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-    } catch (error) {
-      console.error("Error comparing password:", error);
-      return res.status(500).json({ message: "Server error" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new Error("Invalid credentials");
     }
     //! Generate the token
     const token = jwt.sign({ id: user._id }, "anyKey", { expiresIn: "30d" });
@@ -35,8 +59,11 @@ const userCtrl = {
       username: user.username,
     });
   }),
-
-
+  //!Profile
+  profile: asyncHandler(async (req, res) => {
+    //Find the user
+    const user = await User.findById(req.user).select("-password");
+    res.json({ user });
+  }),
 };
-
 module.exports = userCtrl;
