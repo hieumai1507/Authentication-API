@@ -41,12 +41,12 @@ const userCtrl = {
     const user = await User.findOne({ PhoneNumber });
     console.log("user backend", user);
     if (!user) {
-      throw new Error("Invalid credentials");
+      return res.status(401).json({ message: "Invalid credentials" }); // Trả về lỗi 401
     }
     //!Check if user password is valid
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      throw new Error("Invalid credentials");
+      return res.status(401).json({ message: "Invalid credentials" }); // Trả về lỗi 401
     }
     //! Generate the token
     const token = jwt.sign({ id: user._id }, "anyKey", { expiresIn: "30d" });
